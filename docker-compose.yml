@@ -26,12 +26,13 @@ services:
       - ./data:/data
       - ./logs:/app/logs
     environment:
-      - SMS_SERVICE_ENABLED=true                                                                       |
-      # 启用手机号验证码登录功能                                                                       |# Gemini 识别图片 最大图片数量
-      - SMS_LOGIN_ENABLED=true                                                                         |# GEMINI_VISION_MAX_IMAGE_NUM=16
-      - MY_SMS_SENDER_ENDPOINT=https://api.mix2.zthysms.com/v2/sendSms                                 |
-      - MY_SMS_SENDER_USERNAME=xxzxhy                                                                  |# 会话密钥
-      - MY_SMS_SENDER_PASSWORD=yJX8c0wa 
+      - SMS_SERVICE_ENABLED=true
+      # 启用手机号验证码登录功能
+      - SMS_LOGIN_ENABLED=true
+      - MY_SMS_SENDER_ENDPOINT=https://api.mix2.zthysms.com/v2/sendSms
+      - MY_SMS_SENDER_USERNAME=xxzxhy
+      - MY_SMS_SENDER_PASSWORD=yJX8c0wa
+
       - SQL_DSN=postgresql://root:123456@postgres:5432/new-api # ⚠️ IMPORTANT: Change the password in production!
 #      - SQL_DSN=root:123456@tcp(mysql:3306)/new-api  # Point to the mysql service, uncomment if using MySQL
       - REDIS_CONN_STRING=redis://:123456@redis:6379 # ⚠️ IMPORTANT: Change the password in production!
