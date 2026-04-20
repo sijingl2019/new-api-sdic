@@ -18,6 +18,7 @@ ENV GOEXPERIMENT=greenteagc
 
 WORKDIR /build
 
+ENV GOPROXY=https://goproxy.cn,direct
 ADD go.mod go.sum ./
 RUN go mod download
 
