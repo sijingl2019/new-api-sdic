@@ -12,9 +12,10 @@ const DepartmentLogPage = () => {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const [sort, setSort] = useState('total_tokens DESC');
     const [formApi, setFormApi] = useState(null);
 
-    const fetchLogs = async (p = page, s = pageSize) => {
+    const fetchLogs = async (p = page, s = pageSize, st = sort) => {
         setLoading(true);
         try {
             let start_timestamp = 0;
@@ -42,11 +43,10 @@ const DepartmentLogPage = () => {
                 const startOfWeek = new Date(now.getTime() - (day - 1) * 24 * 60 * 60 * 1000);
                 start_timestamp = Math.floor(startOfWeek.getTime() / 1000);
                 end_timestamp = Math.floor(new Date().getTime() / 1000);
-                // Also set default in form next run
             }
 
             const res = await API.get(
-                `/api/log/department?p=${p}&size=${s}&start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}`
+                `/api/log/department?p=${p}&size=${s}&start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}&sort=${st}`
             );
             const { success, message, data } = res.data;
             if (success) {
@@ -59,6 +59,23 @@ const DepartmentLogPage = () => {
             showError(error.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTableChange = ({ pagination, filters, sorter }) => {
+        if (sorter) {
+            const { field, order } = sorter;
+            let orderStr = '';
+            if (order === 'ascend') {
+                orderStr = `${field} ASC`;
+            } else if (order === 'descend') {
+                orderStr = `${field} DESC`;
+            }
+            if (orderStr !== sort) {
+                setSort(orderStr);
+                fetchLogs(1, pageSize, orderStr);
+                setPage(1);
+            }
         }
     };
 
@@ -84,16 +101,6 @@ const DepartmentLogPage = () => {
 
         const url = `/api/log/department/export?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}`;
         
-        let token = localStorage.getItem('user');
-        if (!token) {
-            showWarning('请先登录');
-            return;
-        }
-
-        const anchor = document.createElement('a');
-        anchor.href = url + '&token=' + token; // Sometimes token is passed from query, but mostly it's passed via header. It's better to use fetch with Blob or window.open
-        // Better way to download via token:
-        
         API.get(url, { responseType: 'blob' }).then(response => {
             const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const downloadUrl = window.URL.createObjectURL(blob);
@@ -116,7 +123,7 @@ const DepartmentLogPage = () => {
             const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
             formApi.setValues({ dateRange: [startOfWeek, new Date()] });
         }
-        fetchLogs(page, pageSize);
+        fetchLogs(page, pageSize, sort);
     }, [formApi]);
 
     const columns = [
@@ -124,11 +131,12 @@ const DepartmentLogPage = () => {
         { title: '一级部门', dataIndex: 'first_dept_name', key: 'first_dept_name' },
         { title: '二级部门', dataIndex: 'second_dept_name', key: 'second_dept_name' },
         { title: '三级部门', dataIndex: 'third_dept_name', key: 'third_dept_name' },
-        { title: 'Prompt Tokens', dataIndex: 'prompt_tokens', key: 'prompt_tokens' },
-        { title: 'Complete Tokens', dataIndex: 'complete_tokens', key: 'complete_tokens' },
-        { title: '员工人数', dataIndex: 'employee_count', key: 'employee_count' },
-        { title: '员工使用人数', dataIndex: 'use_count', key: 'use_count' },
-        { title: '员工未使用人数', dataIndex: 'not_use_count', key: 'not_use_count' }
+        { title: 'Prompt Tokens', dataIndex: 'prompt_tokens', key: 'prompt_tokens', sorter: true },
+        { title: 'Complete Tokens', dataIndex: 'complete_tokens', key: 'complete_tokens', sorter: true },
+        { title: 'Total Tokens', dataIndex: 'total_tokens', key: 'total_tokens', sorter: true },
+        { title: '员工人数', dataIndex: 'employee_count', key: 'employee_count', sorter: true },
+        { title: '员工使用人数', dataIndex: 'use_count', key: 'use_count', sorter: true },
+        { title: '员工未使用人数', dataIndex: 'not_use_count', key: 'not_use_count', sorter: true }
     ];
 
     return (
@@ -138,7 +146,7 @@ const DepartmentLogPage = () => {
                     getFormApi={(api) => setFormApi(api)}
                     onSubmit={() => {
                         setPage(1);
-                        fetchLogs(1, pageSize);
+                        fetchLogs(1, pageSize, sort);
                     }}
                     layout='vertical'
                 >
@@ -169,7 +177,7 @@ const DepartmentLogPage = () => {
                         <Button type='tertiary' onClick={() => {
                             if (formApi) {
                                 formApi.reset();
-                                setTimeout(() => fetchLogs(1, pageSize), 100);
+                                setTimeout(() => fetchLogs(1, pageSize, sort), 100);
                             }
                         }} size='small'>重置</Button>
                         <Button type='primary' onClick={handleExport} size='small' icon={<IconDownload />}>导出(Excel)</Button>
@@ -182,6 +190,7 @@ const DepartmentLogPage = () => {
                     columns={columns}
                     dataSource={logs}
                     loading={loading}
+                    onChange={handleTableChange}
                     pagination={{
                         currentPage: page,
                         pageSize: pageSize,
@@ -190,12 +199,12 @@ const DepartmentLogPage = () => {
                         pageSizeOptions: [10, 20, 50, 100],
                         onPageChange: c => {
                             setPage(c);
-                            fetchLogs(c, pageSize);
+                            fetchLogs(c, pageSize, sort);
                         },
                         onPageSizeChange: s => {
                             setPageSize(s);
                             setPage(1);
-                            fetchLogs(1, s);
+                            fetchLogs(1, s, sort);
                         }
                     }}
                  />

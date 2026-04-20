@@ -97,6 +97,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
+        text: t('趋势分析'),
+        itemKey: 'trend_analysis',
+        to: '/console/trend',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
         text: t('绘图日志'),
         itemKey: 'midjourney',
         to: '/midjourney',

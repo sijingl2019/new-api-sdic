@@ -21,8 +21,9 @@ func GetDepartmentLogs(c *gin.Context) {
 	firstDeptName := c.Query("first_dept_name")
 	secondDeptName := c.Query("second_dept_name")
 	thirdDeptName := c.Query("third_dept_name")
+	sort := c.Query("sort")
 
-	logs, total, err := model.GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	logs, total, err := model.GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sort)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -59,7 +60,7 @@ func ExportDepartmentLogs(c *gin.Context) {
 	f.SetSheetName("Sheet1", sheet1)
 	
 	// Write headers for sheet 1
-	headers1 := []string{"公司", "一级部门", "二级部门", "三级部门", "prompt_tokens", "complete_tokens", "员工人数", "员工使用人数", "员工未使用人数"}
+	headers1 := []string{"公司", "一级部门", "二级部门", "三级部门", "prompt_tokens", "complete_tokens", "total_tokens", "员工人数", "员工使用人数", "员工未使用人数"}
 	for i, header := range headers1 {
 		colName, _ := excelize.ColumnNumberToName(i + 1)
 		f.SetCellValue(sheet1, colName+"1", header)
@@ -74,16 +75,17 @@ func ExportDepartmentLogs(c *gin.Context) {
 		f.SetCellValue(sheet1, fmt.Sprintf("D%d", row), log.ThirdDeptName)
 		f.SetCellValue(sheet1, fmt.Sprintf("E%d", row), log.PromptTokens)
 		f.SetCellValue(sheet1, fmt.Sprintf("F%d", row), log.CompleteTokens)
-		f.SetCellValue(sheet1, fmt.Sprintf("G%d", row), log.EmployeeCount)
-		f.SetCellValue(sheet1, fmt.Sprintf("H%d", row), log.UseCount)
-		f.SetCellValue(sheet1, fmt.Sprintf("I%d", row), log.NotUseCount)
+		f.SetCellValue(sheet1, fmt.Sprintf("G%d", row), log.TotalTokens)
+		f.SetCellValue(sheet1, fmt.Sprintf("H%d", row), log.EmployeeCount)
+		f.SetCellValue(sheet1, fmt.Sprintf("I%d", row), log.UseCount)
+		f.SetCellValue(sheet1, fmt.Sprintf("J%d", row), log.NotUseCount)
 	}
 
 	sheet2 := "个人统计信息"
 	f.NewSheet(sheet2)
 
 	// Write headers for sheet 2
-	headers2 := []string{"姓名", "一级部门", "二级部门", "三级部门", "prompt_tokens", "complete_tokens"}
+	headers2 := []string{"姓名", "一级部门", "二级部门", "三级部门", "prompt_tokens", "complete_tokens", "total_tokens"}
 	for i, header := range headers2 {
 		colName, _ := excelize.ColumnNumberToName(i + 1)
 		f.SetCellValue(sheet2, colName+"1", header)
@@ -98,6 +100,7 @@ func ExportDepartmentLogs(c *gin.Context) {
 		f.SetCellValue(sheet2, fmt.Sprintf("D%d", row), log.ThirdDeptName)
 		f.SetCellValue(sheet2, fmt.Sprintf("E%d", row), log.PromptTokens)
 		f.SetCellValue(sheet2, fmt.Sprintf("F%d", row), log.CompleteTokens)
+		f.SetCellValue(sheet2, fmt.Sprintf("G%d", row), log.TotalTokens)
 	}
 
 	var buf bytes.Buffer

@@ -7,6 +7,7 @@ type DepartmentLog struct {
 	ThirdDeptName  string `json:"third_dept_name" gorm:"column:third_dept_name"`
 	PromptTokens   int    `json:"prompt_tokens" gorm:"column:prompt_tokens"`
 	CompleteTokens int    `json:"complete_tokens" gorm:"column:complete_tokens"`
+	TotalTokens    int    `json:"total_tokens" gorm:"column:total_tokens"`
 	EmployeeCount  int    `json:"employee_count" gorm:"column:employee_count"`
 	UseCount       int    `json:"use_count" gorm:"column:use_count"`
 	NotUseCount    int    `json:"not_use_count" gorm:"column:not_use_count"`
@@ -19,9 +20,10 @@ type PersonalStatLog struct {
 	ThirdDeptName  string `json:"third_dept_name" gorm:"column:third_dept_name"`
 	PromptTokens   int    `json:"prompt_tokens" gorm:"column:prompt_tokens"`
 	CompleteTokens int    `json:"complete_tokens" gorm:"column:complete_tokens"`
+	TotalTokens    int    `json:"total_tokens" gorm:"column:total_tokens"`
 }
 
-func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, firstDeptName, secondDeptName, thirdDeptName string, startIdx int, num int) ([]*DepartmentLog, int64, error) {
+func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, firstDeptName, secondDeptName, thirdDeptName string, startIdx int, num int, sort string) ([]*DepartmentLog, int64, error) {
 	var logs []*DepartmentLog
 	var total int64
 
@@ -95,8 +97,15 @@ func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, fi
 		COUNT(DISTINCT l.user_id) as use_count,
 		COUNT(DISTINCT ud.username) - COUNT(DISTINCT l.user_id) as not_use_count,
 		COALESCE(SUM(l.prompt_tokens), 0) as prompt_tokens,
-		COALESCE(SUM(l.completion_tokens), 0) as complete_tokens
+		COALESCE(SUM(l.completion_tokens), 0) as complete_tokens,
+		COALESCE(SUM(l.prompt_tokens), 0) + COALESCE(SUM(l.completion_tokens), 0) as total_tokens
 	`).Group(groupCols)
+
+	if sort != "" {
+		db = db.Order(sort)
+	} else {
+		db = db.Order("total_tokens DESC")
+	}
 
 	if num > 0 {
 		db = db.Limit(num).Offset(startIdx)
@@ -107,7 +116,7 @@ func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, fi
 }
 
 func GetAllDepartmentLogsForExport(startTimestamp int64, endTimestamp int64, companyName, firstDeptName, secondDeptName, thirdDeptName string) ([]*DepartmentLog, error) {
-	logs, _, err := GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, 0, 0)
+	logs, _, err := GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, 0, 0, "total_tokens DESC")
 	return logs, err
 }
 
@@ -157,8 +166,9 @@ func GetPersonalStatLogsForExport(startTimestamp int64, endTimestamp int64, comp
 		ud.second_dept_name, 
 		ud.third_dept_name,
 		COALESCE(SUM(l.prompt_tokens), 0) as prompt_tokens,
-		COALESCE(SUM(l.completion_tokens), 0) as complete_tokens
-	`).Group(groupCols)
+		COALESCE(SUM(l.completion_tokens), 0) as complete_tokens,
+		COALESCE(SUM(l.prompt_tokens), 0) + COALESCE(SUM(l.completion_tokens), 0) as total_tokens
+	`).Group(groupCols).Order("total_tokens DESC")
 
 	err := db.Find(&logs).Error
 	return logs, err
