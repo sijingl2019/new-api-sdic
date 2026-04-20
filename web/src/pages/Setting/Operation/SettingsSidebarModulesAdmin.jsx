@@ -113,6 +113,7 @@ export default function SettingsSidebarModulesAdmin(props) {
         token: true,
         log: true,
         department_log: true,
+        trend_analysis: true,
         midjourney: true,
         task: true,
       },
@@ -231,6 +232,7 @@ export default function SettingsSidebarModulesAdmin(props) {
         { key: 'token', title: t('令牌管理'), description: t('API令牌管理') },
         { key: 'log', title: t('使用日志'), description: t('API使用记录') },
         { key: 'department_log', title: t('部门日志'), description: t('按部门统计API使用情况') },
+        { key: 'trend_analysis', title: t('趋势分析'), description: t('按时间维度分析使用趋势') },
         {
           key: 'midjourney',
           title: t('绘图日志'),

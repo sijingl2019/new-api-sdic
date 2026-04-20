@@ -75,6 +75,7 @@ import {
   Package,
   Server,
   CalendarClock,
+  TrendingUp,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -149,6 +150,8 @@ export function getLucideIcon(key, selected = false) {
       return <Settings {...commonProps} color={iconColor} />;
     case 'department_log':
       return <BarChart3 {...commonProps} color={iconColor} />;
+    case 'trend_analysis':
+      return <TrendingUp {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }
