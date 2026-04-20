@@ -41,7 +41,7 @@ func InitUserDetail() error {
 	}
 
 	// Read json file
-	file, err := os.Open("users_dept.json")
+	file, err := os.Open("/users_dept.json")
 	if err != nil {
 		if os.IsNotExist(err) {
 			common.SysLog("users_dept.json not found, skipping users_detail initialization")

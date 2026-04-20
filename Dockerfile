@@ -33,6 +33,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
+COPY users_dept.json /
 COPY --from=builder2 /build/new-api /
 EXPOSE 3000
 WORKDIR /data

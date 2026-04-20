@@ -76,7 +76,12 @@ func (s *BaseSmsSender) SendCode(ctx context.Context, phoneNumber string) error 
 	common.RedisDel(failedCountKey)
 
 	// Since we compose, we must call the Impl's SendSms
-	return s.Impl.SendSms(ctx, phoneNumber, message)
+	err = s.Impl.SendSms(ctx, phoneNumber, message)
+	if err != nil {
+		common.RedisDel(sendedCodeKey)
+		return err
+	}
+	return nil
 }
 
 func (s *BaseSmsSender) CheckSms(ctx context.Context, phoneNumber string, code string) (bool, error) {
