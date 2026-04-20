@@ -59,6 +59,8 @@ import {
   IconMail,
   IconLock,
   IconKey,
+  IconPhone,
+  IconShield,
 } from '@douyinfe/semi-icons';
 import OIDCIcon from '../common/logo/OIDCIcon';
 import WeChatIcon from '../common/logo/WeChatIcon';
@@ -78,9 +80,11 @@ const LoginForm = () => {
   const [inputs, setInputs] = useState({
     username: '',
     password: '',
+    phone: '',
+    code: '',
     wechat_verification_code: '',
   });
-  const { username, password } = inputs;
+  const { username, password, phone, code } = inputs;
   const [searchParams, setSearchParams] = useSearchParams();
   const [submitted, setSubmitted] = useState(false);
   const [userState, userDispatch] = useContext(UserContext);
@@ -112,6 +116,9 @@ const LoginForm = () => {
   const githubTimeoutRef = useRef(null);
   const githubButtonText = t(githubButtonTextKeyByState[githubButtonState]);
   const [customOAuthLoading, setCustomOAuthLoading] = useState({});
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [smsLoading, setSmsLoading] = useState(false);
 
   const logo = getLogo();
   const systemName = getSystemName();
@@ -149,6 +156,10 @@ const LoginForm = () => {
       setTurnstileSiteKey(status.turnstile_site_key);
     }
 
+    if (status?.sms_login) {
+      setShowPhoneLogin(true);
+    }
+
     // 从 status 获取用户协议和隐私政策的启用状态
     setHasUserAgreement(status?.user_agreement_enabled || false);
     setHasPrivacyPolicy(status?.privacy_policy_enabled || false);
@@ -165,6 +176,18 @@ const LoginForm = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((c) => c - 1);
+      }, 1000);
+    } else {
+      clearInterval(timer);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   useEffect(() => {
     if (searchParams.get('expired')) {
@@ -261,6 +284,69 @@ const LoginForm = () => {
         }
       } else {
         showError('请输入用户名和密码！');
+      }
+    } catch (error) {
+      showError('登录失败，请重试');
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function sendSmsVerification() {
+    if (phone === '') {
+      showInfo('请输入手机号！');
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setSmsLoading(true);
+    try {
+      const res = await API.get(
+        `/api/verification/sms?phone=${phone}&turnstile=${turnstileToken}`,
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess('验证码已发送！');
+        setCountdown(60);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('验证码发送失败，请重试');
+    } finally {
+      setSmsLoading(false);
+    }
+  }
+
+  async function handlePhoneLogin() {
+    if ((hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms) {
+      showInfo(t('请先阅读并同意用户协议和隐私政策'));
+      return;
+    }
+    if (phone === '' || code === '') {
+      showInfo('请输入手机号和验证码！');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const res = await API.post(
+        `/api/user/login/phone?turnstile=${turnstileToken}`,
+        {
+          phone,
+          code,
+        },
+      );
+      const { success, message, data } = res.data;
+      if (success) {
+        userDispatch({ type: 'login', payload: data });
+        setUserData(data);
+        updateAPI();
+        showSuccess('登录成功！');
+        navigate('/console');
+      } else {
+        showError(message);
       }
     } catch (error) {
       showError('登录失败，请重试');
@@ -716,6 +802,169 @@ const LoginForm = () => {
     );
   };
 
+  const renderPhoneLoginForm = () => {
+    return (
+      <div className='flex flex-col items-center'>
+        <div className='w-full max-w-md'>
+          <div className='flex items-center justify-center mb-6 gap-2'>
+            <img src={logo} alt='Logo' className='h-10 rounded-full' />
+            <Title heading={3}>{systemName}</Title>
+          </div>
+
+          <Card className='border-0 !rounded-2xl overflow-hidden'>
+            <div className='flex justify-center pt-6 pb-2'>
+              <Title heading={3} className='text-gray-800 dark:text-gray-200'>
+                {t('登 录')}
+              </Title>
+            </div>
+            <div className='px-2 py-8'>
+              <div className='flex mb-6 p-1 bg-gray-100 rounded-lg'>
+                <Button
+                  theme='solid'
+                  type='secondary'
+                  className='flex-1 !rounded-md'
+                  style={{ backgroundColor: 'white', color: 'black' }}
+                >
+                  {t('手机号登录')}
+                </Button>
+                <Button
+                  theme='borderless'
+                  type='tertiary'
+                  className='flex-1 !rounded-md'
+                  onClick={() => {
+                    setShowEmailLogin(true);
+                    setShowPhoneLogin(false);
+                  }}
+                >
+                  {t('邮箱登录')}
+                </Button>
+              </div>
+
+              <Form className='space-y-4'>
+                <Form.Input
+                  field='phone'
+                  label={t('手机号')}
+                  placeholder={t('请输入手机号')}
+                  name='phone'
+                  onChange={(value) => handleChange('phone', value)}
+                  prefix={<IconPhone />}
+                />
+
+                <div>
+                  <Form.Label>{t('验证码')}</Form.Label>
+                  <div className='flex gap-2 mt-1 items-center'>
+                    <Form.Input
+                      field='code'
+                      noLabel
+                      placeholder={t('请输入验证码')}
+                      name='code'
+                      className='flex-1'
+                      onChange={(value) => handleChange('code', value)}
+                      prefix={<IconShield />}
+                    />
+                    <Button
+                      theme='light'
+                      onClick={sendSmsVerification}
+                      disabled={countdown > 0 || smsLoading}
+                      loading={smsLoading}
+                      style={{ width: '100px' }}
+                    >
+                      {countdown > 0 ? `${countdown}s` : t('获取验证码')}
+                    </Button>
+                  </div>
+                </div>
+
+                {(hasUserAgreement || hasPrivacyPolicy) && (
+                  <div className='pt-4'>
+                    <Checkbox
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    >
+                      <Text size='small' className='text-gray-600'>
+                        {t('我已阅读并同意')}
+                        {hasUserAgreement && (
+                          <>
+                            <a
+                              href='/user-agreement'
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='text-blue-600 hover:text-blue-800 mx-1'
+                            >
+                              {t('用户协议')}
+                            </a>
+                          </>
+                        )}
+                        {hasUserAgreement && hasPrivacyPolicy && t('和')}
+                        {hasPrivacyPolicy && (
+                          <>
+                            <a
+                              href='/privacy-policy'
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='text-blue-600 hover:text-blue-800 mx-1'
+                            >
+                              {t('隐私政策')}
+                            </a>
+                          </>
+                        )}
+                      </Text>
+                    </Checkbox>
+                  </div>
+                )}
+
+                <div className='pt-6 space-y-3'>
+                  <Button
+                    theme='solid'
+                    type='primary'
+                    className='w-full h-12 flex items-center justify-center bg-black text-white !rounded-full hover:bg-gray-800 transition-colors'
+                    onClick={handlePhoneLogin}
+                    loading={loginLoading}
+                  >
+                    {t('登录')}
+                  </Button>
+                </div>
+              </Form>
+
+              {hasOAuthLoginOptions && (
+                <>
+                  <Divider margin='12px' align='center'>
+                    {t('或')}
+                  </Divider>
+
+                  <div className='mt-4 text-center'>
+                    <Button
+                      theme='outline'
+                      type='tertiary'
+                      className='w-full !rounded-full'
+                      onClick={handleOtherLoginOptionsClick}
+                      loading={otherLoginOptionsLoading}
+                    >
+                      {t('其他登录选项')}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {!status.self_use_mode_enabled && (
+                <div className='mt-6 text-center text-sm'>
+                  <Text>
+                    {t('没有账户？')}{' '}
+                    <Link
+                      to='/register'
+                      className='text-blue-600 hover:text-blue-800 font-medium'
+                    >
+                      {t('注册')}
+                    </Link>
+                  </Text>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   const renderEmailLoginForm = () => {
     return (
       <div className='flex flex-col items-center'>
@@ -732,6 +981,29 @@ const LoginForm = () => {
               </Title>
             </div>
             <div className='px-2 py-8'>
+              {status.sms_login && (
+                <div className='flex mb-6 p-1 bg-gray-100 rounded-lg'>
+                  <Button
+                    theme='borderless'
+                    type='tertiary'
+                    className='flex-1 !rounded-md'
+                    onClick={() => {
+                      setShowEmailLogin(false);
+                      setShowPhoneLogin(true);
+                    }}
+                  >
+                    {t('手机号登录')}
+                  </Button>
+                  <Button
+                    theme='solid'
+                    type='secondary'
+                    className='flex-1 !rounded-md'
+                    style={{ backgroundColor: 'white', color: 'black' }}
+                  >
+                    {t('邮箱登录')}
+                  </Button>
+                </div>
+              )}
               {status.passkey_login && passkeySupported && (
                 <Button
                   theme='outline'
@@ -802,17 +1074,13 @@ const LoginForm = () => {
                   </div>
                 )}
 
-                <div className='space-y-2 pt-2'>
+                <div className='pt-6 space-y-3'>
                   <Button
                     theme='solid'
-                    className='w-full !rounded-full'
                     type='primary'
-                    htmlType='submit'
+                    className='w-full h-12 flex items-center justify-center bg-black text-white !rounded-full hover:bg-gray-800 transition-colors'
                     onClick={handleSubmit}
                     loading={loginLoading}
-                    disabled={
-                      (hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms
-                    }
                   >
                     {t('继续')}
                   </Button>
@@ -958,10 +1226,11 @@ const LoginForm = () => {
         style={{ top: '50%', left: '-120px' }}
       />
       <div className='w-full max-w-sm mt-[60px]'>
-        {showEmailLogin ||
-        !hasOAuthLoginOptions
+        {showEmailLogin
           ? renderEmailLoginForm()
-          : renderOAuthOptions()}
+          : (showPhoneLogin && status.sms_login
+              ? renderPhoneLoginForm()
+              : (hasOAuthLoginOptions ? renderOAuthOptions() : renderEmailLoginForm()))}
         {renderWeChatLoginModal()}
         {render2FAModal()}
 

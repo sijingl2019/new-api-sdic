@@ -109,6 +109,14 @@ func InitEnv() {
 	GeminiSafetySetting = GetEnvOrDefaultString("GEMINI_SAFETY_SETTING", "BLOCK_NONE")
 	CohereSafetySetting = GetEnvOrDefaultString("COHERE_SAFETY_SETTING", "NONE")
 
+	SMSSenderEndpoint = GetEnvOrDefaultString("MY_SMS_SENDER_ENDPOINT", "")
+	SMSSenderUsername = GetEnvOrDefaultString("MY_SMS_SENDER_USERNAME", "")
+	SMSSenderPassword = GetEnvOrDefaultString("MY_SMS_SENDER_PASSWORD", "")
+	SMSWhitePhoneList = GetEnvOrDefaultString("SMS_WHITE_PHONE_LIST", "")
+
+	SMSServiceEnabled = GetEnvOrDefaultBool("SMS_SERVICE_ENABLED", true)
+	SMSLoginEnabled = GetEnvOrDefaultBool("SMS_LOGIN_ENABLED", true)
+
 	// Initialize rate limit variables
 	GlobalApiRateLimitEnable = GetEnvOrDefaultBool("GLOBAL_API_RATE_LIMIT_ENABLE", true)
 	GlobalApiRateLimitNum = GetEnvOrDefault("GLOBAL_API_RATE_LIMIT", 180)

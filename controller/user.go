@@ -22,6 +22,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type LoginRequest struct {
@@ -1264,4 +1265,109 @@ func UpdateUserSetting(c *gin.Context) {
 	}
 
 	common.ApiSuccessI18n(c, i18n.MsgSettingSaved, nil)
+}
+
+func SendSMSVerification(c *gin.Context) {
+	if !common.SMSServiceEnabled {
+		common.ApiErrorI18n(c, i18n.MsgFeatureDisabled)
+		return
+	}
+	phone := c.Query("phone")
+	if phone == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	// Check if phone number is valid (simple check)
+	if len(phone) < 7 {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	err := service.GetSmsSender("default").SendCode(c.Request.Context(), phone)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
+type PhoneLoginRequest struct {
+	Phone string `json:"phone"`
+	Code  string `json:"code"`
+}
+
+func PhoneLogin(c *gin.Context) {
+	if !common.SMSLoginEnabled {
+		common.ApiErrorI18n(c, i18n.MsgUserSMSLoginDisabled)
+		return
+	}
+	var loginRequest PhoneLoginRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&loginRequest)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if loginRequest.Phone == "" || loginRequest.Code == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	// Verify code
+	success, err := service.GetSmsSender("default").CheckSms(c.Request.Context(), loginRequest.Phone, loginRequest.Code)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !success {
+		common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
+		return
+	}
+
+	// Find user
+	user := model.User{Phone: loginRequest.Phone}
+	err = user.FillUserByPhone()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Check users_detail
+			userDetail, detailErr := model.GetUserDetailByPhone(loginRequest.Phone)
+			if detailErr != nil {
+				if errors.Is(detailErr, gorm.ErrRecordNotFound) {
+					common.ApiErrorI18n(c, i18n.MsgUserPhoneNotRegistered)
+					return
+				}
+				common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+				return
+			}
+			
+			// userDetail exists, create user
+			hashedPassword, _ := common.Password2Hash("meiya@300188")
+			user = model.User{
+				Username:    userDetail.Username,
+				Password:    hashedPassword,
+				DisplayName: userDetail.Name,
+				Email:       userDetail.Username + "@mail.pico.net",
+				Phone:       userDetail.Mobile,
+				Role:        common.RoleCommonUser,
+				Status:      common.UserStatusEnabled,
+			}
+			err = user.Insert(0)
+			if err != nil {
+				common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+				return
+			}
+		} else {
+			common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+			return
+		}
+	}
+
+	if user.Status != common.UserStatusEnabled {
+		common.ApiErrorI18n(c, i18n.MsgUserDisabled)
+		return
+	}
+
+	// Login success, delete code
+	_ = service.GetSmsSender("default").DeleteSms(c.Request.Context(), loginRequest.Phone)
+
+	setupLogin(&user, c)
 }

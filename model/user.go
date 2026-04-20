@@ -47,6 +47,7 @@ type User struct {
 	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
+	Phone            string         `json:"phone" gorm:"column:phone;index" validate:"max=20"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
@@ -61,6 +62,7 @@ func (user *User) ToBaseUser() *UserBase {
 		Username: user.Username,
 		Setting:  user.Setting,
 		Email:    user.Email,
+		Phone:    user.Phone,
 	}
 	return cache
 }
@@ -166,9 +168,9 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	// check email if empty
 	var err error
 	if email == "" {
-		err = DB.Unscoped().First(&user, "username = ?", username).Error
+		err = DB.Unscoped().First(&user, "username = ? or phone = ?", username, username).Error
 	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
+		err = DB.Unscoped().First(&user, "username = ? or email = ? or phone = ?", username, email, username).Error
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -242,7 +244,7 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	query := tx.Unscoped().Model(&User{})
 
 	// 构建搜索条件
-	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ?"
+	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ? OR phone LIKE ?"
 
 	// 尝试将关键字转换为整数ID
 	keywordInt, err := strconv.Atoi(keyword)
@@ -251,19 +253,19 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 		likeCondition = "id = ? OR " + likeCondition
 		if group != "" {
 			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
 		} else {
 			query = query.Where(likeCondition,
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 		}
 	} else {
 		// 非数字关键字，只搜索字符串字段
 		if group != "" {
 			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
 		} else {
 			query = query.Where(likeCondition,
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 		}
 	}
 
@@ -599,8 +601,8 @@ func (user *User) ValidateAndFill() (err error) {
 	if username == "" || password == "" {
 		return ErrUserEmptyCredentials
 	}
-	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	// find by username, email or phone
+	err = DB.Where("username = ? OR email = ? OR phone = ?", username, username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials
@@ -1045,4 +1047,15 @@ func RootUserExists() bool {
 		return false
 	}
 	return true
+}
+
+func (user *User) FillUserByPhone() error {
+	if user.Phone == "" {
+		return errors.New("phone is empty")
+	}
+	return DB.Where("phone = ?", user.Phone).First(user).Error
+}
+
+func IsPhoneAlreadyTaken(phone string) bool {
+	return DB.Unscoped().Where("phone = ?", phone).Find(&User{}).RowsAffected == 1
 }
