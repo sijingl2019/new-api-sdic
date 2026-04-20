@@ -50,6 +50,7 @@ const routerMap = {
   deployment: '/console/deployment',
   playground: '/console/playground',
   personal: '/console/personal',
+  trend_analysis: '/console/trend',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
