@@ -73,12 +73,12 @@ func getStartOfWeek() int64 {
 
 func getDateFormatExpr(table string, timestampCol string) string {
 	if common.UsingMySQL {
-		return "date_format(from_unixtime(" + timestampCol + "/1000), '%Y-%m-%d')"
+		return "date_format(from_unixtime(" + timestampCol + "), '%Y-%m-%d')"
 	} else if common.UsingPostgreSQL {
-		return "to_char(to_timestamp(" + timestampCol + "/1000), 'YYYY-MM-DD')"
+		return "to_char(to_timestamp(" + timestampCol + "), 'YYYY-MM-DD')"
 	} else {
 		// SQLite
-		return "date(" + timestampCol + "/1000, 'unixepoch')"
+		return "date(" + timestampCol + ", 'unixepoch')"
 	}
 }
 
@@ -89,7 +89,7 @@ func getDailyRegistrations(startTimestamp int64, endTimestamp int64) ([]DailySta
 
 	err := DB.Model(&User{}).
 		Select(dateExpr+" as date, count(*) as count").
-		Where("created_at >= ? AND created_at <= ?", startTimestamp*1000, endTimestamp*1000).
+		Where("created_at >= ? AND created_at <= ?", startTimestamp, endTimestamp).
 		Group(dateExpr).
 		Order("date asc").
 		Find(&results).Error
@@ -108,7 +108,7 @@ func getDailyCalls(startTimestamp int64, endTimestamp int64) ([]DailyStat, error
 
 	err := LOG_DB.Model(&Log{}).
 		Select(dateExpr+" as date, count(*) as count").
-		Where("created_at >= ? AND created_at <= ?", startTimestamp*1000, endTimestamp*1000).
+		Where("created_at >= ? AND created_at <= ?", startTimestamp, endTimestamp).
 		Group(dateExpr).
 		Order("date asc").
 		Find(&results).Error
@@ -127,7 +127,7 @@ func getDailyTokens(startTimestamp int64, endTimestamp int64) ([]TokenStat, erro
 
 	err := LOG_DB.Model(&Log{}).
 		Select(dateExpr+" as date, (sum(prompt_tokens) + sum(completion_tokens)) as tokens").
-		Where("created_at >= ? AND created_at <= ?", startTimestamp*1000, endTimestamp*1000).
+		Where("created_at >= ? AND created_at <= ?", startTimestamp, endTimestamp).
 		Group(dateExpr).
 		Order("date asc").
 		Find(&results).Error

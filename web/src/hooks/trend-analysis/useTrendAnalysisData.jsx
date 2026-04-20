@@ -60,14 +60,15 @@ export const useTrendAnalysisData = () => {
           end_timestamp: endTimestamp,
         },
       });
-      if (res?.success) {
-        setTrendData(res.data || {
+      const { success, message, data } = res.data;
+      if (success) {
+        setTrendData(data || {
           daily_registrations: [],
           daily_calls: [],
           daily_tokens: [],
         });
       } else {
-        showError(res?.message || t('获取趋势数据失败'));
+        showError(message || t('获取趋势数据失败'));
       }
     } catch (error) {
       showError(t('获取趋势数据失败') + ': ' + error.message);
