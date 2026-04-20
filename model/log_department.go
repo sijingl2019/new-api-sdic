@@ -104,7 +104,7 @@ func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, fi
 	if sort != "" {
 		db = db.Order(sort)
 	} else {
-		db = db.Order("total_tokens DESC")
+		db = db.Order("prompt_tokens DESC")
 	}
 
 	if num > 0 {
@@ -116,7 +116,7 @@ func GetDepartmentLogs(startTimestamp int64, endTimestamp int64, companyName, fi
 }
 
 func GetAllDepartmentLogsForExport(startTimestamp int64, endTimestamp int64, companyName, firstDeptName, secondDeptName, thirdDeptName string) ([]*DepartmentLog, error) {
-	logs, _, err := GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, 0, 0, "total_tokens DESC")
+	logs, _, err := GetDepartmentLogs(startTimestamp, endTimestamp, companyName, firstDeptName, secondDeptName, thirdDeptName, 0, 0, "prompt_tokens DESC")
 	return logs, err
 }
 

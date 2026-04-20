@@ -12,7 +12,7 @@ const DepartmentLogPage = () => {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [sort, setSort] = useState('total_tokens DESC');
+    const [sort, setSort] = useState('prompt_tokens DESC');
     const [formApi, setFormApi] = useState(null);
 
     const fetchLogs = async (p = page, s = pageSize, st = sort) => {
