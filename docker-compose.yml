@@ -25,6 +25,7 @@ services:
     volumes:
       - ./data:/data
       - ./logs:/app/logs
+      - ./users_detail.json:/users_detail.json
     environment:
       - SMS_SERVICE_ENABLED=true
       # 启用手机号验证码登录功能
