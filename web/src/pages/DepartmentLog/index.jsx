@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Form, Pagination, Table, Space, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconSearch, IconDownload } from '@douyinfe/semi-icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button, Form, Table, Checkbox, Popover, Typography, Space } from '@douyinfe/semi-ui';
+import { IconSearch, IconDownload, IconSetting } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
-import { API, showError, showWarning } from '../../helpers';
+import { API, showError } from '../../helpers';
 import { DATE_RANGE_PRESETS } from '../../constants/console.constants';
+
+const ALL_DIMENSIONS = [
+    { key: 'company_name', label: '公司' },
+    { key: 'first_dept_name', label: '一级部门' },
+    { key: 'second_dept_name', label: '二级部门' },
+    { key: 'third_dept_name', label: '三级部门' },
+    { key: 'model_name', label: '模型' },
+];
+
+const DEFAULT_DIMENSIONS = ['company_name', 'first_dept_name', 'second_dept_name', 'third_dept_name', 'model_name'];
 
 const DepartmentLogPage = () => {
     const { t } = useTranslation();
@@ -14,8 +24,11 @@ const DepartmentLogPage = () => {
     const [pageSize, setPageSize] = useState(10);
     const [sort, setSort] = useState('prompt_tokens DESC');
     const [formApi, setFormApi] = useState(null);
+    const [selectedDimensions, setSelectedDimensions] = useState(DEFAULT_DIMENSIONS);
 
-    const fetchLogs = async (p = page, s = pageSize, st = sort) => {
+    const dimensionsParam = useMemo(() => selectedDimensions.join(','), [selectedDimensions]);
+
+    const fetchLogs = async (p = page, s = pageSize, st = sort, dims = dimensionsParam) => {
         setLoading(true);
         try {
             let start_timestamp = 0;
@@ -46,7 +59,7 @@ const DepartmentLogPage = () => {
             }
 
             const res = await API.get(
-                `/api/log/department?p=${p}&size=${s}&start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}&sort=${st}`
+                `/api/log/department?p=${p}&size=${s}&start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}&sort=${st}&dimensions=${dims}`
             );
             const { success, message, data } = res.data;
             if (success) {
@@ -73,7 +86,7 @@ const DepartmentLogPage = () => {
             }
             if (orderStr !== sort) {
                 setSort(orderStr);
-                fetchLogs(1, pageSize, orderStr);
+                fetchLogs(1, pageSize, orderStr, dimensionsParam);
                 setPage(1);
             }
         }
@@ -99,7 +112,7 @@ const DepartmentLogPage = () => {
             third_dept_name = values.third_dept_name || '';
         }
 
-        const url = `/api/log/department/export?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}`;
+        const url = `/api/log/department/export?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&company_name=${company_name}&first_dept_name=${first_dept_name}&second_dept_name=${second_dept_name}&third_dept_name=${third_dept_name}&dimensions=${dimensionsParam}`;
         
         API.get(url, { responseType: 'blob' }).then(response => {
             const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -123,21 +136,75 @@ const DepartmentLogPage = () => {
             const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
             formApi.setValues({ dateRange: [startOfWeek, new Date()] });
         }
-        fetchLogs(page, pageSize, sort);
+        fetchLogs(page, pageSize, sort, dimensionsParam);
     }, [formApi]);
 
-    const columns = [
-        { title: '公司', dataIndex: 'company_name', key: 'company_name' },
-        { title: '一级部门', dataIndex: 'first_dept_name', key: 'first_dept_name' },
-        { title: '二级部门', dataIndex: 'second_dept_name', key: 'second_dept_name' },
-        { title: '三级部门', dataIndex: 'third_dept_name', key: 'third_dept_name' },
-        { title: 'Prompt Tokens', dataIndex: 'prompt_tokens', key: 'prompt_tokens', sorter: true },
-        { title: 'Complete Tokens', dataIndex: 'complete_tokens', key: 'complete_tokens', sorter: true },
-        { title: 'Total Tokens', dataIndex: 'total_tokens', key: 'total_tokens', sorter: true },
-        { title: '员工人数', dataIndex: 'employee_count', key: 'employee_count', sorter: true },
-        { title: '员工使用人数', dataIndex: 'use_count', key: 'use_count', sorter: true },
-        { title: '员工未使用人数', dataIndex: 'not_use_count', key: 'not_use_count', sorter: true }
-    ];
+    // Dynamically build columns based on selected dimensions
+    const columns = useMemo(() => {
+        const dimColumnMap = {
+            'company_name': { title: '公司', dataIndex: 'company_name', key: 'company_name' },
+            'first_dept_name': { title: '一级部门', dataIndex: 'first_dept_name', key: 'first_dept_name' },
+            'second_dept_name': { title: '二级部门', dataIndex: 'second_dept_name', key: 'second_dept_name' },
+            'third_dept_name': { title: '三级部门', dataIndex: 'third_dept_name', key: 'third_dept_name' },
+            'model_name': { title: '模型名称', dataIndex: 'model_name', key: 'model_name' },
+        };
+
+        const cols = [];
+        for (const dim of selectedDimensions) {
+            if (dimColumnMap[dim]) {
+                cols.push(dimColumnMap[dim]);
+            }
+        }
+
+        cols.push(
+            { title: 'Prompt Tokens', dataIndex: 'prompt_tokens', key: 'prompt_tokens', sorter: true },
+            { title: 'Complete Tokens', dataIndex: 'complete_tokens', key: 'complete_tokens', sorter: true },
+            { title: 'Total Tokens', dataIndex: 'total_tokens', key: 'total_tokens', sorter: true },
+            { title: '员工人数', dataIndex: 'employee_count', key: 'employee_count', sorter: true },
+            { title: '员工使用人数', dataIndex: 'use_count', key: 'use_count', sorter: true },
+            { title: '员工未使用人数', dataIndex: 'not_use_count', key: 'not_use_count', sorter: true },
+        );
+
+        return cols;
+    }, [selectedDimensions]);
+
+    const handleDimensionChange = (checkedValues) => {
+        if (checkedValues.length === 0) {
+            showError('请至少选择一个维度');
+            return;
+        }
+        setSelectedDimensions(checkedValues);
+    };
+
+    const handleDimensionApply = () => {
+        setPage(1);
+        const dims = selectedDimensions.join(',');
+        fetchLogs(1, pageSize, sort, dims);
+    };
+
+    const dimensionPopoverContent = (
+        <div style={{ padding: '8px 0', minWidth: 140 }}>
+            <div style={{ marginBottom: 8 }}>
+                <Typography.Text strong size='small'>选择统计维度</Typography.Text>
+            </div>
+            <Checkbox.Group
+                direction='vertical'
+                value={selectedDimensions}
+                onChange={handleDimensionChange}
+            >
+                {ALL_DIMENSIONS.map(dim => (
+                    <Checkbox key={dim.key} value={dim.key} style={{ marginBottom: 4 }}>
+                        {dim.label}
+                    </Checkbox>
+                ))}
+            </Checkbox.Group>
+            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button size='small' type='primary' onClick={handleDimensionApply}>
+                    应用
+                </Button>
+            </div>
+        </div>
+    );
 
     return (
         <div className='mt-[60px] px-2'>
@@ -146,7 +213,7 @@ const DepartmentLogPage = () => {
                     getFormApi={(api) => setFormApi(api)}
                     onSubmit={() => {
                         setPage(1);
-                        fetchLogs(1, pageSize, sort);
+                        fetchLogs(1, pageSize, sort, dimensionsParam);
                     }}
                     layout='vertical'
                 >
@@ -177,10 +244,17 @@ const DepartmentLogPage = () => {
                         <Button type='tertiary' onClick={() => {
                             if (formApi) {
                                 formApi.reset();
-                                setTimeout(() => fetchLogs(1, pageSize, sort), 100);
+                                setTimeout(() => fetchLogs(1, pageSize, sort, dimensionsParam), 100);
                             }
                         }} size='small'>重置</Button>
                         <Button type='primary' onClick={handleExport} size='small' icon={<IconDownload />}>导出(Excel)</Button>
+                        <Popover
+                            content={dimensionPopoverContent}
+                            trigger='click'
+                            position='bottomRight'
+                        >
+                            <Button type='tertiary' size='small' icon={<IconSetting />}>维度设置</Button>
+                        </Popover>
                     </div>
                 </Form>
             </div>
@@ -199,12 +273,12 @@ const DepartmentLogPage = () => {
                         pageSizeOptions: [10, 20, 50, 100],
                         onPageChange: c => {
                             setPage(c);
-                            fetchLogs(c, pageSize, sort);
+                            fetchLogs(c, pageSize, sort, dimensionsParam);
                         },
                         onPageSizeChange: s => {
                             setPageSize(s);
                             setPage(1);
-                            fetchLogs(1, s, sort);
+                            fetchLogs(1, s, sort, dimensionsParam);
                         }
                     }}
                  />
