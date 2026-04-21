@@ -36,27 +36,27 @@ var validDimensions = map[string]string{
 }
 
 // parseDimensions parses a comma-separated dimension string and returns
-// the list of valid dimension keys and whether model_name is included.
+// the list of valid dimension keys in a fixed order and whether model_name is included.
 func parseDimensions(dimensions string) (keys []string, hasModelName bool) {
+	order := []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name", "model_name"}
 	if dimensions == "" {
 		// default: all department dimensions, no model
-		return []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name"}, false
+		return order[:4], false
 	}
 	parts := strings.Split(dimensions, ",")
 	seen := make(map[string]bool)
 	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if _, ok := validDimensions[p]; ok && !seen[p] {
-			keys = append(keys, p)
-			seen[p] = true
-			if p == "model_name" {
-				hasModelName = true
-			}
+		seen[strings.TrimSpace(p)] = true
+	}
+	for _, k := range order {
+		if seen[k] {
+			keys = append(keys, k)
 		}
 	}
 	if len(keys) == 0 {
-		return []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name"}, false
+		return order[:4], false
 	}
+	hasModelName = seen["model_name"]
 	return keys, hasModelName
 }
 

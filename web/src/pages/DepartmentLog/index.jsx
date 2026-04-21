@@ -139,7 +139,7 @@ const DepartmentLogPage = () => {
         fetchLogs(page, pageSize, sort, dimensionsParam);
     }, [formApi]);
 
-    // Dynamically build columns based on selected dimensions
+    // Dynamically build columns based on selected dimensions in a fixed order
     const columns = useMemo(() => {
         const dimColumnMap = {
             'company_name': { title: '公司', dataIndex: 'company_name', key: 'company_name' },
@@ -150,9 +150,10 @@ const DepartmentLogPage = () => {
         };
 
         const cols = [];
-        for (const dim of selectedDimensions) {
-            if (dimColumnMap[dim]) {
-                cols.push(dimColumnMap[dim]);
+        // Iterate through ALL_DIMENSIONS to maintain fixed order
+        for (const dim of ALL_DIMENSIONS) {
+            if (selectedDimensions.includes(dim.key)) {
+                cols.push(dimColumnMap[dim.key]);
             }
         }
 
@@ -183,7 +184,7 @@ const DepartmentLogPage = () => {
     };
 
     const dimensionPopoverContent = (
-        <div style={{ padding: '8px 0', minWidth: 140 }}>
+        <div style={{ padding: '8px 16px', minWidth: 160 }}>
             <div style={{ marginBottom: 8 }}>
                 <Typography.Text strong size='small'>选择统计维度</Typography.Text>
             </div>

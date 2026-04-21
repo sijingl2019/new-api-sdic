@@ -168,30 +168,25 @@ func ExportDepartmentLogs(c *gin.Context) {
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
 
-// parseDimensionKeys parses comma-separated dimension string for the controller.
+// parseDimensionKeys parses comma-separated dimension string and returns keys in a fixed order.
 func parseDimensionKeys(dimensions string) []string {
-	validKeys := map[string]bool{
-		"company_name":     true,
-		"first_dept_name":  true,
-		"second_dept_name": true,
-		"third_dept_name":  true,
-		"model_name":       true,
-	}
+	order := []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name", "model_name"}
 	if dimensions == "" {
-		return []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name"}
+		return order[:4] // default: company, first, second, third
 	}
 	parts := strings.Split(dimensions, ",")
-	var keys []string
 	seen := make(map[string]bool)
 	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if validKeys[p] && !seen[p] {
-			keys = append(keys, p)
-			seen[p] = true
+		seen[strings.TrimSpace(p)] = true
+	}
+	var keys []string
+	for _, k := range order {
+		if seen[k] {
+			keys = append(keys, k)
 		}
 	}
 	if len(keys) == 0 {
-		return []string{"company_name", "first_dept_name", "second_dept_name", "third_dept_name"}
+		return order[:4]
 	}
 	return keys
 }
