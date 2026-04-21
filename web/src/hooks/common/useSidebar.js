@@ -36,6 +36,8 @@ export const DEFAULT_ADMIN_CONFIG = {
     detail: true,
     token: true,
     log: true,
+    department_log: true,
+    trend_analysis: true,
     midjourney: true,
     task: true,
   },

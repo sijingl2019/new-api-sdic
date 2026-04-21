@@ -36,11 +36,13 @@ import Token from './pages/Token';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
 import Log from './pages/Log';
+import TrendAnalysis from './pages/TrendAnalysis';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
 import Midjourney from './pages/Midjourney';
 import Pricing from './pages/Pricing';
 import Task from './pages/Task';
+import DepartmentLog from './pages/DepartmentLog';
 import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
 import Playground from './pages/Playground';
@@ -283,6 +285,22 @@ function App() {
             <PrivateRoute>
               <Log />
             </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/department_log'
+          element={
+            <AdminRoute>
+              <DepartmentLog />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/trend'
+          element={
+            <AdminRoute>
+              <TrendAnalysis />
+            </AdminRoute>
           }
         />
         <Route

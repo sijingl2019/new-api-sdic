@@ -82,6 +82,7 @@ func createRootAccountIfNeed() error {
 			DisplayName: "Root User",
 			AccessToken: nil,
 			Quota:       100000000,
+			CreatedAt:   time.Now().Unix(),
 		}
 		DB.Create(&rootUser)
 	}
@@ -203,6 +204,13 @@ func InitDB() (err error) {
 		}
 		common.SysLog("database migration started")
 		err = migrateDB()
+		if err == nil {
+			err = InitUserDetail()
+			if err != nil {
+				common.SysLog("failed to initialize users_detail: " + err.Error())
+				err = nil // don't block startup
+			}
+		}
 		return err
 	} else {
 		common.FatalLog(err)
@@ -280,6 +288,7 @@ func migrateDB() error {
 		&SubscriptionPreConsumeRecord{},
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
+		&UserDetail{},
 	)
 	if err != nil {
 		return err
@@ -328,6 +337,7 @@ func migrateDBFast() error {
 		{&SubscriptionPreConsumeRecord{}, "SubscriptionPreConsumeRecord"},
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
+		{&UserDetail{}, "UserDetail"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

@@ -102,6 +102,12 @@ user.telegram_id_empty: "Telegram ID is empty!"
 user.telegram_not_bound: "This Telegram account is not bound"
 user.linux_do_id_empty: "Linux DO ID is empty!"
 user.quota_change_zero: "Quota change amount cannot be zero"
+user.phone_empty: "Phone number is empty"
+user.sms_verification_required: "Phone verification is enabled, please enter phone number and verification code"
+user.sms_login_disabled: "Phone verification login is disabled by administrator"
+user.verification_code_sent: "Verification code sent"
+user.verification_code_failed: "Failed to send verification code"
+user.phone_not_registered: "Please log in using the mobile number registered with the company"
 
 # Quota messages
 quota.negative: "Quota cannot be negative!"

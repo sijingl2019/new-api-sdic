@@ -114,6 +114,12 @@ const (
 	MsgUserTelegramNotBound          = "user.telegram_not_bound"
 	MsgUserLinuxDOIdEmpty            = "user.linux_do_id_empty"
 	MsgUserQuotaChangeZero           = "user.quota_change_zero"
+	MsgUserPhoneEmpty                = "user.phone_empty"
+	MsgUserSMSVerificationRequired   = "user.sms_verification_required"
+	MsgUserSMSLoginDisabled          = "user.sms_login_disabled"
+	MsgUserVerificationCodeSent      = "user.verification_code_sent"
+	MsgUserVerificationCodeFailed    = "user.verification_code_failed"
+	MsgUserPhoneNotRegistered        = "user.phone_not_registered"
 )
 
 // Quota related messages
